@@ -89,8 +89,14 @@ else
 fi
 
 if [[ -f "${TARGET_DIR}/api-guard.linux-amd64" ]]; then
-  chmod +x "${TARGET_DIR}/api-guard.linux-amd64"
   mv -f "${TARGET_DIR}/api-guard.linux-amd64" "${TARGET_DIR}/api-guard"
+fi
+
+if [[ -f "${TARGET_DIR}/api-guard" ]]; then
+  chmod +x "${TARGET_DIR}/api-guard"
+  if [[ -w "/usr/local/bin" ]]; then
+    ln -sf "${TARGET_DIR}/api-guard" /usr/local/bin/api-guard
+  fi
 fi
 
 if [[ "${SKIP_BUILD}" != "1" ]]; then
@@ -105,10 +111,19 @@ if [[ "${SKIP_BUILD}" != "1" ]]; then
   fi
 fi
 
+API_BIN="${TARGET_DIR}/api-guard"
+if [[ ! -x "${API_BIN}" ]] && command -v api-guard >/dev/null 2>&1; then
+  API_BIN="$(command -v api-guard)"
+fi
+
+if [[ -x "${API_BIN}" ]]; then
+  echo ">> Running api-guard install..."
+  "${API_BIN}" install
+fi
+
 cat <<'DONE'
 API hardener applied.
 Next:
-  1) Запустите: ./api-guard install
-  2) Перезапустите панель.
-  3) В панели появится вкладка "API" для управления токенами и лимитами.
+  1) Перезапустите панель.
+  2) В панели появится вкладка "API" для управления токенами и лимитами.
 DONE
