@@ -25,11 +25,16 @@ PAYLOAD_EOF
 if command -v base64 >/dev/null 2>&1; then
   base64 -d "${TMPDIR}/payload.b64" > "${PAYLOAD_FILE}"
 else
-  python - "${TMPDIR}/payload.b64" "${PAYLOAD_FILE}" <<'PY'
-import base64, sys, pathlib
-data = pathlib.Path(sys.argv[1]).read_bytes()
-pathlib.Path(sys.argv[2]).write_bytes(base64.b64decode(data))
+  cat > "${TMPDIR}/decode_payload.py" <<'PY'
+import base64
+import pathlib
+import sys
+
+src = pathlib.Path(sys.argv[1])
+dst = pathlib.Path(sys.argv[2])
+dst.write_bytes(base64.b64decode(src.read_bytes()))
 PY
+  python "${TMPDIR}/decode_payload.py" "${TMPDIR}/payload.b64" "${PAYLOAD_FILE}"
 fi
 
 mkdir -p "${PAYLOAD_DIR}"
