@@ -83,17 +83,26 @@ ensure_go() {
 
 echo ">> Copying hardened API payload into ${TARGET_DIR}"
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a "${PAYLOAD_DIR}/"/ "${TARGET_DIR}/"
+  rsync -a "${PAYLOAD_DIR}/" "${TARGET_DIR}/"
 else
   cp -R "${PAYLOAD_DIR}/." "${TARGET_DIR}/"
 fi
 
+if [[ -f "${TARGET_DIR}/api-guard.linux-amd64" ]]; then
+  chmod +x "${TARGET_DIR}/api-guard.linux-amd64"
+  mv -f "${TARGET_DIR}/api-guard.linux-amd64" "${TARGET_DIR}/api-guard"
+fi
+
 if [[ "${SKIP_BUILD}" != "1" ]]; then
-  ensure_go
-  echo ">> Running go mod tidy..."
-  (cd "${TARGET_DIR}" && "${GO_BIN}" mod tidy)
-  echo ">> Building api-guard CLI..."
-  (cd "${TARGET_DIR}" && "${GO_BIN}" build -o api-guard ./cmd/api-guard)
+  if [[ ! -f "${TARGET_DIR}/go.mod" ]]; then
+    echo ">> go.mod не найден в ${TARGET_DIR}, сборка пропущена (использую встроенный бинарник api-guard)"
+  else
+    ensure_go
+    echo ">> Running go mod tidy..."
+    (cd "${TARGET_DIR}" && "${GO_BIN}" mod tidy)
+    echo ">> Building api-guard CLI..."
+    (cd "${TARGET_DIR}" && "${GO_BIN}" build -tags toolsignore -o api-guard ./cmd/api-guard)
+  fi
 fi
 
 cat <<'DONE'
@@ -101,5 +110,5 @@ API hardener applied.
 Next:
   1) Запустите: ./api-guard install
   2) Перезапустите панель.
-  3) В панели появится вкладка “API” для управления токенами и лимитами.
+  3) В панели появится вкладка "API" для управления токенами и лимитами.
 DONE
