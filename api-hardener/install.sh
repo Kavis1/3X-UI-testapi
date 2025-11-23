@@ -88,6 +88,16 @@ else
   cp -R "${PAYLOAD_DIR}/." "${TARGET_DIR}/"
 fi
 
+if [[ ! -f "${TARGET_DIR}/api-guard.linux-amd64" && -f "${PAYLOAD_DIR}/api-guard.linux-amd64" ]]; then
+  cp -f "${PAYLOAD_DIR}/api-guard.linux-amd64" "${TARGET_DIR}/api-guard.linux-amd64"
+fi
+if [[ ! -f "${TARGET_DIR}/api-guard.linux-amd64" && ! -f "${TARGET_DIR}/api-guard" ]]; then
+  echo ">> Extracting api-guard binary from payload..."
+  if ! tar -xzf "${PAYLOAD_FILE}" -C "${TARGET_DIR}" api-guard.linux-amd64 2>/dev/null; then
+    echo "!! Не удалось извлечь api-guard из архива" >&2
+  fi
+fi
+
 if [[ -f "${TARGET_DIR}/api-guard.linux-amd64" ]]; then
   mv -f "${TARGET_DIR}/api-guard.linux-amd64" "${TARGET_DIR}/api-guard"
 fi
