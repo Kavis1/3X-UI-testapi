@@ -8,6 +8,10 @@ PAYLOAD_DIR=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_BASE_URL="${SCRIPT_BASE_URL:-https://raw.githubusercontent.com/Kavis1/3X-UI-testapi/main/api-hardener}"
 PAYLOAD_URL="${PAYLOAD_URL:-${SCRIPT_BASE_URL}/payload.b64}"
+GO_VERSION="${GO_VERSION:-1.22.5}"
+GO_ARCHIVE="go${GO_VERSION}.linux-amd64.tar.gz"
+GO_URL="${GO_URL:-https://go.dev/dl/${GO_ARCHIVE}}"
+GO_BIN=""
 
 cleanup() {
   if [[ -n "${PAYLOAD_FILE}" && -f "${PAYLOAD_FILE}" ]]; then
@@ -53,6 +57,30 @@ fi
 mkdir -p "${PAYLOAD_DIR}"
 tar -xzf "${PAYLOAD_FILE}" -C "${PAYLOAD_DIR}"
 
+ensure_go() {
+  if command -v go >/dev/null 2>&1; then
+    GO_BIN="$(command -v go)"
+    return
+  fi
+  echo ">> Go не найден, скачиваю ${GO_URL}"
+  local archive="${TMPDIR}/${GO_ARCHIVE}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "${GO_URL}" -o "${archive}"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "${archive}" "${GO_URL}"
+  else
+    echo "curl или wget необходимы для загрузки Go" >&2
+    exit 1
+  fi
+  tar -xzf "${archive}" -C "${TMPDIR}"
+  GO_BIN="${TMPDIR}/go/bin/go"
+  if [[ ! -x "${GO_BIN}" ]]; then
+    echo "Не удалось распаковать Go" >&2
+    exit 1
+  fi
+  export PATH="${TMPDIR}/go/bin:${PATH}"
+}
+
 echo ">> Copying hardened API payload into ${TARGET_DIR}"
 if command -v rsync >/dev/null 2>&1; then
   rsync -a "${PAYLOAD_DIR}/"/ "${TARGET_DIR}/"
@@ -61,10 +89,11 @@ else
 fi
 
 if [[ "${SKIP_BUILD}" != "1" ]]; then
+  ensure_go
   echo ">> Running go mod tidy..."
-  (cd "${TARGET_DIR}" && go mod tidy)
+  (cd "${TARGET_DIR}" && "${GO_BIN}" mod tidy)
   echo ">> Building api-guard CLI..."
-  (cd "${TARGET_DIR}" && go build -o api-guard ./cmd/api-guard)
+  (cd "${TARGET_DIR}" && "${GO_BIN}" build -o api-guard ./cmd/api-guard)
 fi
 
 cat <<'DONE'
